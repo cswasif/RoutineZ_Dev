@@ -46,7 +46,7 @@ const ApiStatus = () => {
   };
 
   const handleClick = () => {
-    window.open('https://connectlive-nine.vercel.app/', '_blank');
+    window.open('https://ezconnapi.duckdns.org/', '_blank');
   };
 
   return (

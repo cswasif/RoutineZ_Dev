@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <!-- Calendar-like background with rounded corners -->
+  <rect x="4" y="4" width="24" height="24" rx="4" ry="4" fill="#2196F3"/>
+  
+  <!-- Two small rounded rectangles at top -->
+  <rect x="8" y="2" width="4" height="4" rx="2" ry="2" fill="#2196F3"/>
+  <rect x="20" y="2" width="4" height="4" rx="2" ry="2" fill="#2196F3"/>
+  
+  <!-- "ez" text -->
+  <text x="16" y="18" font-family="Arial Black" font-size="12" fill="black" text-anchor="middle" font-weight="900">ez</text>
+  
+  <!-- Downward arrow -->
+  <path d="M 10 20 L 22 20 L 16 24 Z" fill="black" stroke="black" stroke-width="0.5"/>
+</svg> 

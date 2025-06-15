@@ -1,0 +1,538 @@
+/* App.css */
+.app-container {
+  position: relative;
+  min-height: 100vh;
+  background-color: #ffffff;
+}
+
+.content-container {
+  position: relative;
+  z-index: 10;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0.5rem 0.5rem 0.5rem 0.5rem;
+  /* border-top: 2px solid #dee2e6; */
+  /* border: 1px solid #dee2e6; */
+  /* border-radius: 0.5rem; */
+  /* background: #fff; */
+  /* box-shadow: 0 2px 8px rgba(0,0,0,0.03); */
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.usis-title {
+  margin: 0;
+  font-size: 2.2rem;
+  color: #333;
+  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tagline {
+  font-family: 'Inter', sans-serif;
+  font-style: italic;
+  font-size: 0.9rem;
+  color: #666;
+  margin-top: 4px;
+  font-weight: 400;
+  text-align: left;
+}
+
+.tagline::after {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background-color: #4CAF50;
+  border-radius: 50%;
+  margin-left: 6px;
+  margin-bottom: 2px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+  }
+  
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px rgba(76, 175, 80, 0);
+  }
+  
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+  }
+}
+
+/* Waves Component */
+.waves-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.waves-gradient {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to bottom, #e3f2fd, #ffffff);
+}
+
+.waves-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Grid Pattern Component */
+.grid-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+}
+
+.grid-pattern {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: linear-gradient(to right, rgba(0, 0, 0, 0.1) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+  opacity: 0.1;
+}
+
+.grid-gradient {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to bottom, transparent, #ffffff);
+}
+
+/* Navigation Tabs */
+.nav-tabs {
+  border-bottom: 1px solid #dee2e6;
+  margin-bottom: 1rem;
+}
+
+.nav-tabs .nav-link {
+  color: #495057;
+  border: 1px solid transparent;
+  border-top-left-radius: 0.25rem;
+  border-top-right-radius: 0.25rem;
+  padding: 0.5rem 1rem;
+  text-decoration: none;
+}
+
+.nav-tabs .nav-link.active {
+  color: #007bff;
+  background-color: #fff;
+  border-color: #dee2e6 #dee2e6 #fff;
+}
+
+/* Tab Content */
+.tab-content {
+  background-color: #fff;
+  /* border: 1px solid #dee2e6; */
+  padding: 0.7rem !important;
+  border-radius: 0 0 0.25rem 0.25rem;
+}
+
+.tab-pane {
+  display: none;
+}
+
+.tab-pane.show.active {
+  display: block;
+  border-top: 2px solid #dee2e6;
+  border-left: 2px solid #dee2e6;
+  border-right: 2px solid #dee2e6;
+  border-bottom: 2px solid #dee2e6;
+  box-shadow: 0 4px 24px 0 rgba(0,0,0,0.08), 0 1.5px 6px 0 rgba(0,0,0,0.04);
+}
+
+/* Routine Table Styling */
+.routine-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 16px;
+  font-size: 13px;
+  background: white;
+}
+
+.routine-table th,
+.routine-table td {
+  border: 1px solid #ddd;
+  padding: 4px;
+  text-align: left;
+  vertical-align: top;
+  min-height: 30px;
+}
+
+.routine-table th {
+  background-color: white;
+  font-weight: normal;
+  text-align: center;
+  color: #333;
+  padding: 4px;
+}
+
+.routine-table td {
+  min-width: 100px;
+  background-color: white;
+}
+
+.routine-table td:first-child {
+  background-color: white;
+  font-weight: normal;
+  color: #333;
+  font-size: 13px;
+  width: 120px;
+}
+
+/* Course block styling */
+.routine-table td > div {
+  border-radius: 2px;
+  padding: 4px !important;
+  margin: 0;
+  font-size: 13px;
+}
+
+/* Class styling */
+.routine-table td > div.class-block {
+  background-color: #f5f5f5 !important;
+  border: 1px solid #e0e0e0 !important;
+}
+
+/* Lab styling */
+.routine-table td > div.lab-block {
+  background-color: #e3f2fd !important;
+  border: 1px solid #bbdefb !important;
+}
+
+/* Course info styling */
+.routine-table td > div > div:first-child {
+  margin-bottom: 2px !important;
+}
+
+.routine-table td > div > div span {
+  font-size: 13px;
+  color: #333;
+}
+
+/* Badge styling */
+.routine-table td > div.class-block > div > span:first-child {
+  background-color: #e0e0e0 !important;
+  color: #333 !important;
+  font-size: 12px;
+  padding: 0px 2px !important;
+  border-radius: 2px;
+  border: 1px solid #ccc;
+  font-weight: normal !important;
+  margin-right: 4px;
+}
+
+.routine-table td > div.lab-block > div > span:first-child {
+  background-color: #bbdefb !important;
+  color: #1976d2 !important;
+  font-size: 12px;
+  padding: 0px 2px !important;
+  border-radius: 2px;
+  border: 1px solid #90caf9;
+  font-weight: normal !important;
+  margin-right: 4px;
+}
+
+/* Room styling */
+.routine-table td > div > div span[style*="color: #1976d2"] {
+  color: #333 !important;
+}
+
+/* Make form elements more compact */
+input, select, .react-select__control, .react-select__input-container {
+  min-height: 32px !important;
+  font-size: 0.95rem !important;
+  padding: 4px 8px !important;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input:focus, select:focus {
+  /* No color change, just smooth transition */
+  outline: none;
+}
+
+/* Compact multi-select tags */
+.react-select__multi-value {
+  font-size: 0.92rem !important;
+  padding: 2px 6px !important;
+}
+
+/* Reduce margin between form sections */
+.content-container > * {
+  margin-bottom: 0.7rem !important;
+}
+
+/* Compact radio buttons and labels */
+input[type="radio"] + label, label[for] {
+  font-size: 0.95rem !important;
+  margin-right: 0.7rem !important;
+}
+
+body, .app-container {
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+}
+
+.card, .routine-table, .dropdown, .faculty-dropdown, .section-dropdown {
+  box-shadow: 0 4px 24px 0 rgba(79,140,255,0.10);
+  border-radius: 12px;
+  background: #fff;
+}
+
+label {
+  color: #222;
+  font-weight: 500;
+}
+
+button, .ai-best-routine-btn {
+  /* Ensure high contrast text */
+  color: #222;
+  background: #e6e6e6;
+  border: 1.5px solid #b0b8c9;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+}
+button:focus-visible, .ai-best-routine-btn:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2.5px solid #222;
+  outline-offset: 2px;
+}
+
+/* Dropdown fade/slide animation */
+.dropdown, .faculty-dropdown, .section-dropdown, .routine-table th ul, .routine-table td ul, ul[role="listbox"] {
+  animation: dropdown-fade-slide 0.22s cubic-bezier(0.4,0,0.2,1);
+  transition: box-shadow 0.2s;
+}
+@keyframes dropdown-fade-slide {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Course toggle button styles */
+.course-toggle-btn {
+  padding: 8px 16px;
+  font-size: 0.9em;
+  background-color: #fff;
+  color: #333;
+  border: 1px solid #90caf9;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.course-toggle-btn:hover {
+  background-color: #f5f5f5;
+  border-color: #64b5f6;
+}
+
+.course-toggle-btn.active {
+  background-color: #e3f2fd;
+}
+
+.course-toggle-btn .toggle-indicator {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: #ccc;
+  transition: background-color 0.2s ease;
+}
+
+.course-toggle-btn.active .toggle-indicator {
+  background-color: #2196f3;
+}
+
+/* Add responsive styles for mobile */
+@media (max-width: 700px) {
+  .content-container, .app-container {
+    padding: 0.5rem 0.2rem 0.5rem 0.2rem;
+    max-width: 100vw;
+  }
+  .card, .routine-table, .dropdown, .faculty-dropdown, .section-dropdown {
+    border-radius: 12px;
+    padding: 10px 6px !important;
+    margin-bottom: 12px !important;
+    width: 100% !important;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  .routine-table {
+    font-size: 0.95em;
+    overflow-x: auto;
+    display: block;
+  }
+  .routine-table th, .routine-table td {
+    min-width: 80px;
+    padding: 6px 4px;
+  }
+  input, select, .react-select__control, .react-select__input-container {
+    width: 100% !important;
+    min-width: 0;
+    font-size: 1em !important;
+    padding: 10px 12px !important;
+    box-sizing: border-box;
+  }
+  button, .ai-best-routine-btn {
+    min-height: 44px;
+    font-size: 1.08em;
+    padding: 0 18px;
+    border-radius: 8px;
+  }
+  .card span, .card button, .card input, .card label {
+    font-size: 1em !important;
+    min-height: 36px;
+  }
+  .card span {
+    padding: 6px 12px !important;
+    margin-bottom: 6px !important;
+  }
+  .course-toggle-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 12px;
+    font-size: 1em;
+  }
+}
+
+.lock-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 1.2em;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lock-btn:hover {
+  background-color: #f0f0f0;
+}
+
+.lock-btn.locked {
+  color: #2196f3;
+}
+
+/* Add responsive styles for mobile */
+@media (max-width: 700px) {
+  .lock-btn {
+    padding: 8px;
+  }
+}
+
+/* Faculty dropdown styles */
+.faculty-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  z-index: 1000;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 4px;
+}
+
+.faculty-dropdown-item {
+  padding: 8px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+  transition: background-color 0.2s;
+}
+
+.faculty-dropdown-item:hover {
+  background-color: #f5f5f5;
+}
+
+.faculty-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.faculty-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+}
+
+.faculty-tag {
+  background: #f0f0f0;
+  color: #555555;
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 5px;
+  margin-bottom: 5px;
+  font-size: 0.9em;
+}
+
+.faculty-tag-remove {
+  margin-left: 5px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: #555555;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.faculty-input {
+  flex-grow: 1;
+  border: none;
+  outline: none;
+  padding: 5px;
+  min-width: 120px;
+  font-size: 0.9em;
+} 

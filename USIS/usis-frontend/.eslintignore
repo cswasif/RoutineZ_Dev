@@ -1,0 +1,25 @@
+# Dependencies
+node_modules
+build
+dist
+
+# Build files
+*.min.js
+*.bundle.js
+
+# Config files
+.eslintrc.js
+.eslintignore
+
+# Cache
+.cache
+.eslintcache
+
+# Test files
+__tests__
+*.test.js
+*.spec.js
+
+# Other
+coverage
+public 

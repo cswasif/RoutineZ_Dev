@@ -38,24 +38,13 @@ export const formatTime12Hour = (timeString) => {
 const getLabSchedulesArray = (section) => {
   const labSchedules = section.labSchedules;
   if (!labSchedules) return [];
-  
-  // Handle old format (array of schedules)
-  if (Array.isArray(labSchedules)) {
-    return labSchedules.map(sched => ({
+  if (Array.isArray(labSchedules)) return labSchedules;
+  if (labSchedules.classSchedules && Array.isArray(labSchedules.classSchedules)) {
+    return labSchedules.classSchedules.map(sched => ({
       ...sched,
       room: section.labRoomName || sched.room || "TBA"
     }));
   }
-  
-  // Handle new format (object with classSchedules)
-  if (labSchedules.classSchedules && Array.isArray(labSchedules.classSchedules)) {
-    return labSchedules.classSchedules.map(sched => ({
-      ...sched,
-      room: section.labRoomName || sched.room || "TBA",
-      faculty: section.labFaculties || "TBA"
-    }));
-  }
-  
   return [];
 };
 
@@ -127,44 +116,44 @@ function renderRoutineGrid(sections, selectedDays) {
               section: section,
               formattedTime: formattedTime,
               day: day,
-              room: sched.room || section.roomName || "TBA",
-              faculty: section.faculties || "TBA"  // Use section's faculty
+              room: sched.room || section.roomName
             });
           }
         });
       });
     }
 
-    // Process lab schedules using getLabSchedulesArray
+    // Process lab schedules
     const labSchedulesArr = getLabSchedulesArray(section);
-    labSchedulesArr.forEach(lab => {
-      const day = lab.day.charAt(0).toUpperCase() + lab.day.slice(1).toLowerCase();
-      if (!selectedDays.includes(day)) return;
+    if (labSchedulesArr.length > 0) {
+      labSchedulesArr.forEach(lab => {
+        const day = lab.day.charAt(0).toUpperCase() + lab.day.slice(1).toLowerCase();
+        if (!selectedDays.includes(day)) return;
 
-      const startTime = formatDisplayTime(lab.startTime);
-      const endTime = formatDisplayTime(lab.endTime);
-      const formattedTime = `${startTime} - ${endTime}`;
+        const startTime = formatDisplayTime(lab.startTime);
+        const endTime = formatDisplayTime(lab.endTime);
+        const formattedTime = `${startTime} - ${endTime}`;
 
-      // Find matching time slot
-      TIME_SLOTS.forEach(slot => {
-        const [slotStart, slotEnd] = slot.value.split('-').map(t => t.trim());
-        const labStart = timeToMinutes(lab.startTime);
-        const labEnd = timeToMinutes(lab.endTime);
-        const slotStartMin = timeToMinutes(slotStart);
-        const slotEndMin = timeToMinutes(slotEnd);
+        // Find matching time slot
+        TIME_SLOTS.forEach(slot => {
+          const [slotStart, slotEnd] = slot.value.split('-').map(t => t.trim());
+          const labStart = timeToMinutes(lab.startTime);
+          const labEnd = timeToMinutes(lab.endTime);
+          const slotStartMin = timeToMinutes(slotStart);
+          const slotEndMin = timeToMinutes(slotEnd);
 
-        if (schedules_overlap(labStart, labEnd, slotStartMin, slotEndMin)) {
-          grid[day][slot.value].push({
-            type: "lab",
-            section: section,
-            formattedTime: formattedTime,
-            day: day,
-            room: lab.room || section.labRoomName || "TBA",
-            faculty: lab.faculty || section.labFaculties || "TBA"  // Use lab's faculty or section's lab faculty
-          });
-        }
+          if (schedules_overlap(labStart, labEnd, slotStartMin, slotEndMin)) {
+            grid[day][slot.value].push({
+              type: "lab",
+              section: section,
+              formattedTime: formattedTime,
+              day: day,
+              room: lab.room || section.labRoomName
+            });
+          }
+        });
       });
-    });
+    }
   });
 
   // Helper to format room display
@@ -209,7 +198,7 @@ function renderRoutineGrid(sections, selectedDays) {
                     </div>
                     <div style={{ fontSize: '12px', color: '#666' }}>
                       {entry.section.sectionName && <div>Section: {entry.section.sectionName}</div>}
-                      {entry.faculty && <div>Faculty: {entry.faculty}</div>}
+                      {entry.section.faculties && <div>Faculty: {entry.section.faculties}</div>}
                       {entry.room && <div>Room: {formatRoomDisplay(entry)}</div>}
                     </div>
                   </div>
@@ -669,26 +658,42 @@ const CourseOption = ({ innerRef, innerProps, data, isSelected }) => (
 // --- Make Routine Page ---
 const MakeRoutinePage = () => {
   const [routineCourses, setRoutineCourses] = useState([]);
-  const [routineDays, setRoutineDays] = useState(DAYS.map(d => ({ value: d, label: d }))); // Reverted to include all days
-  const [routineResult, setRoutineResult] = useState(null);
+  const [availableCourses, setAvailableCourses] = useState([]); // Add this state
   const [availableFacultyByCourse, setAvailableFacultyByCourse] = useState({});
   const [selectedFacultyByCourse, setSelectedFacultyByCourse] = useState({});
+  const [selectedSectionsByFaculty, setSelectedSectionsByFaculty] = useState({});
+  const [courseSearchTerm, setCourseSearchTerm] = useState('');
+  const [isCourseSuggestionsOpen, setIsCourseSuggestionsOpen] = useState(false);
+
+  // Add useEffect to fetch courses
+  useEffect(() => {
+    const fetchCourses = async () => {
+      try {
+        const response = await axios.get(`${API_BASE}/courses`);
+        setAvailableCourses(response.data);
+      } catch (error) {
+        console.error('Error fetching courses:', error);
+      }
+    };
+    fetchCourses();
+  }, []);
+
+  const [routineDays, setRoutineDays] = useState(DAYS.map(d => ({ value: d, label: d }))); // Reverted to include all days
+  const [routineResult, setRoutineResult] = useState(null);
+  const [routineFaculty, setRoutineFaculty] = useState(null);
+  const [routineFacultyOptions, setRoutineFacultyOptions] = useState([]);
   const [routineTimes, setRoutineTimes] = useState(TIME_SLOTS);
   const [routineError, setRoutineError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [aiFeedback, setAiFeedback] = useState(null);
   const [commutePreference, setCommutePreference] = useState("");
-  const [selectedSectionsByFaculty, setSelectedSectionsByFaculty] = useState({});
   const [usedAI, setUsedAI] = useState(false);
   const [courseOptions, setCourseOptions] = useState([]);
-  const [courseSearchTerm, setCourseSearchTerm] = useState('');
   const [filteredCourseOptions, setFilteredCourseOptions] = useState([]);
-  const [isCourseSuggestionsOpen, setIsCourseSuggestionsOpen] = useState(false);
-  const routineGridRef = useRef(null);
+  const [isDaySuggestionsOpen, setIsDaySuggestionsOpen] = useState(false); // Day suggestions list visibility
 
   const [daySearchTerm, setDaySearchTerm] = useState(''); // Input value for day search
   const [filteredDayOptions, setFilteredDayOptions] = useState(DAYS.map(d => ({ value: d, label: d }))); // Filtered day suggestions
-  const [isDaySuggestionsOpen, setIsDaySuggestionsOpen] = useState(false); // Day suggestions list visibility
 
   const [timeSearchTerm, setTimeSearchTerm] = useState(''); // Input value for time search
   const [filteredTimeOptions, setFilteredTimeOptions] = useState(TIME_SLOTS); // Filtered time suggestions
@@ -704,15 +709,7 @@ const MakeRoutinePage = () => {
   const [filteredSectionOptions, setFilteredSectionOptions] = useState({});
   const [isSectionSuggestionsOpen, setIsSectionSuggestionsOpen] = useState({});
 
-  // Inside MakeRoutinePage component, add this state after other useState declarations
-  const [showAllCourses, setShowAllCourses] = useState(false);
-
-  // Inside MakeRoutinePage component, add this state after other useState declarations
-  const [lockedCourses, setLockedCourses] = useState(new Set());
-
-  // Add loading states for faculty and sections
-  const [facultyLoadingStates, setFacultyLoadingStates] = useState({});
-  const [sectionLoadingStates, setSectionLoadingStates] = useState({});
+  const routineGridRef = useRef(null);
 
   // Function to handle PNG download
   const handleDownloadPNG = () => {
@@ -763,12 +760,12 @@ const MakeRoutinePage = () => {
   };
 
   useEffect(() => {
-    axios.get(`${API_BASE}/courses?show_all=${showAllCourses}`).then(res => {
+    axios.get(`${API_BASE}/courses`).then(res => {
       // Prepare options for the main course select, including disabled state
       const options = res.data.map(course => ({
         value: course.code,
         label: course.code,
-        isDisabled: !showAllCourses && course.totalAvailableSeats <= 0,
+        isDisabled: course.totalAvailableSeats <= 0,
         totalAvailableSeats: course.totalAvailableSeats
       }));
       // Sort options alphabetically
@@ -776,26 +773,19 @@ const MakeRoutinePage = () => {
       setCourseOptions(options);
       setFilteredCourseOptions(options);
     });
-  }, [showAllCourses]); // Add showAllCourses as dependency
+  }, []);
 
   // Handler and logic implementations (copied from previous working version)
   const handleCourseSelect = async (selectedOptions) => {
     setRoutineCourses(selectedOptions);
-    
-    // Keep track of which courses were currently locked (use current state, not previous)
-    const currentlyLockedCourses = new Set(lockedCourses);
-    
     for (const course of selectedOptions) {
       try {
-        const isLocked = currentlyLockedCourses.has(course.value);
-        const res = await axios.get(`${API_BASE}/course_details?course=${course.value}&show_all=${isLocked}`);
+        const res = await axios.get(`${API_BASE}/course_details?course=${course.value}`);
         const facultySections = {};
         res.data.forEach(section => {
           if (section.faculties) {
-            // For locked courses, include all sections regardless of seats
-            // For unlocked courses, only include sections with available seats
             const availableSeats = section.capacity - section.consumedSeat;
-            if (isLocked || availableSeats > 0) {
+            if (availableSeats > 0) {
               if (!facultySections[section.faculties]) {
                 facultySections[section.faculties] = {
                   sections: [],
@@ -812,7 +802,6 @@ const MakeRoutinePage = () => {
         setAvailableFacultyByCourse(prev => ({ ...prev, [course.value]: facultySections }));
       } catch (error) {}
     }
-    
     // Remove faculty data for unselected courses
     const selectedCourseCodes = selectedOptions.map(c => c.value);
     setAvailableFacultyByCourse(prev => {
@@ -829,17 +818,6 @@ const MakeRoutinePage = () => {
       const newState = {};
       selectedCourseCodes.forEach(code => { if (prev[code]) newState[code] = prev[code]; });
       return newState;
-    });
-    
-    // Update locked courses state to only include selected courses
-    setLockedCourses(prev => {
-      const newLocked = new Set();
-      selectedCourseCodes.forEach(code => {
-        if (prev.has(code)) {
-          newLocked.add(code);
-        }
-      });
-      return newLocked;
     });
   };
 
@@ -893,68 +871,107 @@ const MakeRoutinePage = () => {
 
     setIsLoading(true);
 
-    // Prepare course-faculty map for the API request
     const courseFacultyMap = routineCourses.map(course => {
-      const courseFaculties = selectedFacultyByCourse[course.value] || [];
-      const sections = selectedSectionsByFaculty[course.value] || {};
-      
-      // If no faculty is selected, send empty sections object
-      if (courseFaculties.length === 0) {
-        return {
-          course: course.value,
-          sections: {}
-        };
-      }
-      
-      // For each faculty, create an entry in the sections object
-      const facultyMap = {};
-      courseFaculties.forEach(faculty => {
-        // If a specific section is selected for this faculty, use it
-        if (sections[faculty.value]) {
-          facultyMap[faculty.value] = {
-            value: sections[faculty.value].section.sectionName,
-            label: sections[faculty.value].section.sectionName,
-            section: sections[faculty.value].section
-          };
-        } else {
-          // If no section is selected, use empty object to get all sections for this faculty
-          facultyMap[faculty.value] = {};
-        }
-      });
-      
+      const selectedFaculty = selectedFacultyByCourse[course.value] || [];
+      const facultyWithSections = selectedFaculty.map(f => ({
+        value: f.value,
+        section: selectedSectionsByFaculty[course.value]?.[f.value]?.value || null
+      }));
+
       return {
         course: course.value,
-        sections: facultyMap
+        faculty: facultyWithSections.map(f => f.value),
+        sections: Object.fromEntries(
+          facultyWithSections
+            .filter(f => f.section)
+            .map(f => [f.value, f.section])
+        )
       };
     });
 
-    // Make the API request
     axios.post(`${API_BASE}/routine`, {
       courses: courseFacultyMap,
       days: selectedDays,
       times: routineTimes.map(t => t.value),
       useAI: useAI,
       commutePreference: commutePreference
-    })
-    .then(response => {
-      if (response.data.error) {
-        setRoutineError(response.data.error);
-      } else {
-        setRoutineResult(response.data.routine);
-        if (response.data.feedback) {
-          setAiFeedback(response.data.feedback);
+    }).then(res => {
+      setIsLoading(false);
+      
+      // Check for error response from backend
+      if (res.data && res.data.error) {
+        setRoutineError(res.data.error);
+        setRoutineResult(null);
+        setAiFeedback(null);
+        return;
+      }
+
+      let geminiResponse = res.data;
+
+      // Handle potential nested routine structure from backend
+      if (geminiResponse && geminiResponse.routine && Array.isArray(geminiResponse.routine)) {
+        geminiResponse = geminiResponse.routine;
+      } else if (!Array.isArray(geminiResponse)) {
+        geminiResponse = geminiResponse ? [geminiResponse] : [];
+      }
+
+      // Ensure geminiResponse is an array before proceeding
+      if (!Array.isArray(geminiResponse)) {
+        console.error("Unexpected response format from backend:", res.data);
+        setRoutineError('Failed to process routine response from backend.');
+        setRoutineResult(null);
+        setAiFeedback(null);
+        return;
+      }
+
+      // Continue with existing validation for lab and class days
+      const selectedDaysUpper = routineDays.map(d => d.value.toUpperCase());
+      let labDayMismatch = false;
+      let classDayMismatch = false;
+      const mismatchedLabs = [];
+      const mismatchedClasses = [];
+
+      geminiResponse.forEach(section => {
+        const requiredClassDays = section.sectionSchedule?.classSchedules?.map(s => s.day.toUpperCase()) || [];
+        requiredClassDays.forEach(classDayUpper => {
+          if (!selectedDaysUpper.includes(classDayUpper)) {
+            classDayMismatch = true;
+            mismatchedClasses.push(`${section.courseCode} (${classDayUpper})`);
+          }
+        });
+
+        if (section.labSchedules && section.labSchedules.length > 0) {
+          section.labSchedules.forEach(labSched => {
+            const labDayUpper = labSched.day.toUpperCase();
+            if (!selectedDaysUpper.includes(labDayUpper)) {
+              labDayMismatch = true;
+              mismatchedLabs.push(`${section.courseCode} Lab (${labSched.day})`);
+            }
+          });
         }
+      });
+
+      if (classDayMismatch || labDayMismatch) {
+        let errorMessage = "Cannot generate routine with the selected days:\n\n";
+        if (classDayMismatch) {
+          errorMessage += `- Missing required class day(s) for: ${mismatchedClasses.join(', ')}\n`;
+        }
+        if (labDayMismatch) {
+          errorMessage += `- Missing required lab day(s) for: ${mismatchedLabs.join(', ')}\n`;
+        }
+        errorMessage += "\nPlease select the necessary day(s) for all courses.";
+        setRoutineError(errorMessage);
+        return;
       }
-    })
-    .catch(error => {
+
+      setRoutineResult(geminiResponse);
+      if (res.data && res.data.feedback) {
+        setAiFeedback(res.data.feedback);
+      }
+    }).catch(error => {
       console.error("Error generating routine:", error);
-      if (error.response && error.response.data && error.response.data.error) {
-        setRoutineError(error.response.data.error);
-      } else {
-        setRoutineError("Failed to generate routine. Please try again.");
-      }
-    })
-    .finally(() => {
+      setRoutineError('Failed to generate routine. Please try again.');
+    }).finally(() => {
       setIsLoading(false);
     });
   };
@@ -964,126 +981,98 @@ const MakeRoutinePage = () => {
     const value = event.target.value;
     setCourseSearchTerm(value);
 
-    if (value === '') {
-      // If input is cleared, show all courses that are not already selected
-      setFilteredCourseOptions(courseOptions.filter(option => !routineCourses.some(rc => rc.value === option.value)));
-    } else {
-      // Filter courses based on input value (case-insensitive) and exclude already selected ones
-      const filtered = courseOptions.filter(option =>
-        option.label.toLowerCase().includes(value.toLowerCase()) && !routineCourses.some(rc => rc.value === option.value)
-      );
-      setFilteredCourseOptions(filtered);
-    }
+    // Filter available courses based on search term
+    const filtered = availableCourses
+        .filter(course => 
+            course.code.toLowerCase().includes(value.toLowerCase()) &&
+            !routineCourses.some(selected => selected.value === course.code)
+        )
+        .map(course => ({
+            value: course.code,
+            label: course.code,
+            isDisabled: !course.sections?.some(section => section.availableSeats > 0)
+        }));
 
-    // Open suggestions if there is input or available options
-     setIsCourseSuggestionsOpen(true);
+    setFilteredCourseOptions(filtered);
+    setIsCourseSuggestionsOpen(value.length > 0 && filtered.length > 0);
   };
 
   // New handler for selecting a course from suggestions
   const handleCourseSuggestionSelect = async (option) => {
-    // Check if course is currently locked
-    const isLocked = lockedCourses.has(option.value);
+    // Check if any section has available seats
+    const courseData = availableCourses.find(c => c.code === option.value);
+    const hasAvailableSection = courseData?.sections?.some(section => section.availableSeats > 0);
     
-    // Prevent adding if the course is disabled (no seats available) and not locked
-    if (!isLocked && option.isDisabled) {
-      // Optionally show a temporary message to the user
-      alert(`Cannot add ${option.label}: No seats available.`);
-      setCourseSearchTerm(''); // Clear input after attempted selection
-      setIsCourseSuggestionsOpen(false); // Close suggestions
-      return;
+    // Prevent adding if no section has available seats
+    if (!hasAvailableSection) {
+        alert(`Cannot add ${option.label}: No seats available.`);
+        setCourseSearchTerm(''); // Clear input after attempted selection
+        setIsCourseSuggestionsOpen(false); // Close suggestions
+        return;
     }
 
     // Add the selected course to the routineCourses state if not already present
     if (!routineCourses.some(course => course.value === option.value)) {
-      const updatedCourses = [...routineCourses, option];
-      setRoutineCourses(updatedCourses);
+        const updatedCourses = [...routineCourses, option];
+        setRoutineCourses(updatedCourses);
 
-      // Fetch faculty data for the course - use show_all=true for locked courses
-      try {
-        const res = await axios.get(`${API_BASE}/course_details?course=${option.value}&show_all=${isLocked}`);
-        const facultySections = {};
-        res.data.forEach(section => {
-          if (section.faculties) {
-            // For locked courses, include ALL sections regardless of seats
-            // For unlocked courses, only include sections with available seats
-            const availableSeats = section.capacity - section.consumedSeat;
-            if (isLocked || availableSeats > 0) {
-              if (!facultySections[section.faculties]) {
-                facultySections[section.faculties] = {
-                  sections: [],
-                  totalSeats: 0,
-                  availableSeats: 0
-                };
-              }
-              facultySections[section.faculties].sections.push(section);
-              facultySections[section.faculties].totalSeats += section.capacity;
-              facultySections[section.faculties].availableSeats += availableSeats;
-            }
-          }
-        });
-        setAvailableFacultyByCourse(prev => ({ ...prev, [option.value]: facultySections }));
-      } catch (error) {
-        console.error(`Error fetching faculty for ${option.value}:`, error);
-      }
+        try {
+            const res = await axios.get(`${API_BASE}/course_details?course=${option.value}`);
+            const facultySections = {};
+            res.data.forEach(section => {
+                if (section.faculties) {
+                    const availableSeats = section.capacity - section.consumedSeat;
+                    if (availableSeats > 0) {
+                        if (!facultySections[section.faculties]) {
+                            facultySections[section.faculties] = {
+                                sections: [],
+                                totalSeats: 0,
+                                availableSeats: 0
+                            };
+                        }
+                        facultySections[section.faculties].sections.push(section);
+                        facultySections[section.faculties].totalSeats += section.capacity;
+                        facultySections[section.faculties].availableSeats += availableSeats;
+                    }
+                }
+            });
+            setAvailableFacultyByCourse(prev => ({ ...prev, [option.value]: facultySections }));
+        } catch (error) {
+            console.error(`Error fetching faculty for ${option.value}:`, error);
+        }
     }
-    
-    // If the course was previously locked, make sure to preserve that state
-    if (isLocked) {
-      setLockedCourses(prev => {
-        const newLocked = new Set(prev);
-        newLocked.add(option.value);
-        return newLocked;
-      });
-    }
-    
+
     setCourseSearchTerm(''); // Clear input after selection
-    // Update suggestions to exclude the newly selected course
-    setFilteredCourseOptions(prevOptions => prevOptions.filter(opt => opt.value !== option.value));
-    setIsCourseSuggestionsOpen(false); // Close suggestions after selection
+    setIsCourseSuggestionsOpen(false); // Close suggestions
   };
 
   // New handler for removing a course tag
   const handleRemoveCourseTag = (courseValue) => {
-    setRoutineCourses(routineCourses.filter(course => course.value !== courseValue));
-    
-    // When a tag is removed, add the course back to filtered options if search term is empty
-    if (courseSearchTerm === '') {
-      const removedCourse = courseOptions.find(opt => opt.value === courseValue);
-      if(removedCourse) {
-        setFilteredCourseOptions([...filteredCourseOptions, removedCourse].sort((a, b) => a.label.localeCompare(b.label)));
+      setRoutineCourses(routineCourses.filter(course => course.value !== courseValue));
+      // When a tag is removed, add the course back to filtered options if search term is empty
+      if (courseSearchTerm === '') {
+        const removedCourse = courseOptions.find(opt => opt.value === courseValue);
+        if(removedCourse) {
+            setFilteredCourseOptions([...filteredCourseOptions, removedCourse].sort((a, b) => a.label.localeCompare(b.label)));
+        }
+      } else {
+           // If there's a search term, re-filter based on current input
+            const filtered = courseOptions.filter(option =>
+                option.label.toLowerCase().includes(courseSearchTerm.toLowerCase()) && !routineCourses.some(rc => rc.value === option.value && rc.value !== courseValue) // Exclude the one just removed from the exclusion list
+            );
+            setFilteredCourseOptions(filtered);
       }
-    } else {
-      // If there's a search term, re-filter based on current input
-      const filtered = courseOptions.filter(option =>
-        option.label.toLowerCase().includes(courseSearchTerm.toLowerCase()) && 
-        !routineCourses.some(rc => rc.value === option.value && rc.value !== courseValue) // Exclude the one just removed from the exclusion list
-      );
-      setFilteredCourseOptions(filtered);
-    }
-    
-    // Also remove corresponding faculty and section selections for the removed course
-    setSelectedFacultyByCourse(prev => {
-      const newState = { ...prev };
-      delete newState[courseValue];
-      return newState;
-    });
-    setSelectedSectionsByFaculty(prev => {
-      const newState = { ...prev };
-      delete newState[courseValue];
-      return newState;
-    });
-    setAvailableFacultyByCourse(prev => {
-      const newState = { ...prev };
-      delete newState[courseValue];
-      return newState;
-    });
-    
-    // Remove the course from locked courses if it was locked
-    setLockedCourses(prev => {
-      const newLocked = new Set(prev);
-      newLocked.delete(courseValue);
-      return newLocked;
-    });
+      // Also remove corresponding faculty and section selections for the removed course
+        setSelectedFacultyByCourse(prev => {
+            const newState = { ...prev };
+            delete newState[courseValue];
+            return newState;
+        });
+        setSelectedSectionsByFaculty(prev => {
+            const newState = { ...prev };
+            delete newState[courseValue];
+            return newState;
+        });
   };
 
   // New handlers for input focus and blur
@@ -1232,59 +1221,30 @@ const MakeRoutinePage = () => {
   // Handler for faculty input change
   const handleFacultyInputChange = (event, courseValue) => {
     const value = event.target.value;
-    const isLocked = lockedCourses.has(courseValue);
-    const selectedFaculty = selectedFacultyByCourse[courseValue] || [];
-    
-    // For locked courses, don't allow input if already has a faculty selected
-    if (isLocked && selectedFaculty.length > 0) {
-      return;
-    }
-    
     setFacultySearchTerm(prev => ({ ...prev, [courseValue]: value }));
-    
-    // Get all faculty options for the course, including those with no available seats if course is locked
     const facultyOptions = Object.entries(availableFacultyByCourse[courseValue] || {})
-      .filter(([_, info]) => isLocked || info.availableSeats > 0)
+      .filter(([_, info]) => info.availableSeats > 0)
       .map(([faculty, info]) => ({ value: faculty, label: faculty, info }));
-    
-    // Filter based on search term and exclude already selected faculty
-    let filteredBySearch;
+    let filtered;
     if (value === '') {
-      filteredBySearch = facultyOptions.filter(option => 
-        !(selectedFacultyByCourse[courseValue] || []).some(f => f.value === option.value)
-      );
+      filtered = facultyOptions.filter(option => !(selectedFacultyByCourse[courseValue] || []).some(f => f.value === option.value));
     } else {
-      filteredBySearch = facultyOptions.filter(option =>
-        option.label.toLowerCase().includes(value.toLowerCase()) && 
-        !(selectedFacultyByCourse[courseValue] || []).some(f => f.value === option.value)
+      filtered = facultyOptions.filter(option =>
+        option.label.toLowerCase().includes(value.toLowerCase()) && !(selectedFacultyByCourse[courseValue] || []).some(f => f.value === option.value)
       );
     }
-    
-    setFilteredFacultyOptions(prev => ({ ...prev, [courseValue]: filteredBySearch }));
+    setFilteredFacultyOptions(prev => ({ ...prev, [courseValue]: filtered }));
     setIsFacultySuggestionsOpen(prev => ({ ...prev, [courseValue]: true }));
   };
 
   // Handler for selecting a faculty from suggestions
   const handleFacultySuggestionSelect = (option, courseValue) => {
-    const isLocked = lockedCourses.has(courseValue);
-    
-    // For locked courses, only allow one faculty
-    if (isLocked) {
+    if (!(selectedFacultyByCourse[courseValue] || []).some(f => f.value === option.value)) {
       setSelectedFacultyByCourse(prev => ({
         ...prev,
-        [courseValue]: [option]  // Replace any existing faculty
+        [courseValue]: [...(prev[courseValue] || []), option]
       }));
-    } else {
-      // For unlocked courses, allow multiple faculty
-      if (!(selectedFacultyByCourse[courseValue] || []).some(f => f.value === option.value)) {
-        setSelectedFacultyByCourse(prev => ({
-          ...prev,
-          [courseValue]: [...(prev[courseValue] || []), option]
-        }));
-      }
     }
-    
-    // Clear the input and suggestions
     setFacultySearchTerm(prev => ({ ...prev, [courseValue]: '' }));
     setFilteredFacultyOptions(prev => ({
       ...prev,
@@ -1303,28 +1263,13 @@ const MakeRoutinePage = () => {
 
   // Handler for faculty input focus/blur
   const handleFacultyInputFocus = (courseValue) => {
-    const isLocked = lockedCourses.has(courseValue);
-    const selectedFaculty = selectedFacultyByCourse[courseValue] || [];
-    
-    // For locked courses, don't show dropdown if already has a faculty selected
-    if (isLocked && selectedFaculty.length > 0) {
-      return;
-    }
-    
-    // Get all faculty options for the course, including those with no available seats if course is locked
     const facultyOptions = Object.entries(availableFacultyByCourse[courseValue] || {})
-      .filter(([_, info]) => isLocked || info.availableSeats > 0)
+      .filter(([_, info]) => info.availableSeats > 0)
       .map(([faculty, info]) => ({ value: faculty, label: faculty, info }));
-    
-    // Filter out already selected faculty
-    const filteredBySelection = facultyOptions.filter(option => 
-      !(selectedFacultyByCourse[courseValue] || []).some(f => f.value === option.value)
-    );
-    
-    setFilteredFacultyOptions(prev => ({ ...prev, [courseValue]: filteredBySelection }));
+    const filtered = facultyOptions.filter(option => !(selectedFacultyByCourse[courseValue] || []).some(f => f.value === option.value));
+    setFilteredFacultyOptions(prev => ({ ...prev, [courseValue]: filtered }));
     setIsFacultySuggestionsOpen(prev => ({ ...prev, [courseValue]: true }));
   };
-  
   const handleFacultyInputBlur = (courseValue) => {
     setTimeout(() => {
       setIsFacultySuggestionsOpen(prev => ({ ...prev, [courseValue]: false }));
@@ -1540,7 +1485,6 @@ const MakeRoutinePage = () => {
   // Handler for section input change
   const handleSectionInputChange = (event, courseValue, facultyValue, sectionOptions) => {
     const value = event.target.value;
-    const isLocked = lockedCourses.has(courseValue);
     setSectionSearchTerm(prev => ({
       ...prev,
       [courseValue]: { ...(prev[courseValue] || {}), [facultyValue]: value }
@@ -1608,62 +1552,10 @@ const MakeRoutinePage = () => {
     }, 200);
   };
 
-  // Add new handler for toggling course lock status
-  const handleToggleCourseLock = async (courseValue) => {
-    setLockedCourses(prev => {
-      const newLocked = new Set(prev);
-      if (newLocked.has(courseValue)) {
-        newLocked.delete(courseValue);
-      } else {
-        newLocked.add(courseValue);
-      }
-      return newLocked;
-    });
-
-    // Refetch course details to update sections
-    try {
-      const isLocked = !lockedCourses.has(courseValue); // Use opposite since state hasn't updated yet
-      const res = await axios.get(`${API_BASE}/course_details?course=${courseValue}&show_all=${isLocked}`);
-      const facultySections = {};
-      res.data.forEach(section => {
-        if (section.faculties) {
-          // For locked courses, include all sections regardless of seats
-          // For unlocked courses, only include sections with available seats
-          const availableSeats = section.capacity - section.consumedSeat;
-          if (isLocked || availableSeats > 0) {
-            if (!facultySections[section.faculties]) {
-              facultySections[section.faculties] = {
-                sections: [],
-                totalSeats: 0,
-                availableSeats: 0
-              };
-            }
-            facultySections[section.faculties].sections.push(section);
-            facultySections[section.faculties].totalSeats += section.capacity;
-            facultySections[section.faculties].availableSeats += availableSeats;
-          }
-        }
-      });
-      setAvailableFacultyByCourse(prev => ({ ...prev, [courseValue]: facultySections }));
-    } catch (error) {
-      console.error(`Error fetching faculty for ${courseValue}:`, error);
-    }
-  };
-
   return (
     <div style={{ padding: "20px", textAlign: "center" }}>
       <h2>Make Routine</h2>
       <p>Select courses and their faculty, then choose available days and times.</p>
-      {/* Add the toggle button right before the course selection div */}
-      <div style={{ marginBottom: "20px", textAlign: "right" }}>
-        <button
-          onClick={() => setShowAllCourses(!showAllCourses)}
-          className={`course-toggle-btn ${showAllCourses ? 'active' : ''}`}
-        >
-          <span className="toggle-indicator"></span>
-          {showAllCourses ? "Showing All Courses" : "Showing Available Courses"}
-        </button>
-      </div>
       {/* Course Selection with Autocomplete and Tags */}
       <div style={{ marginBottom: "20px", position: "relative", textAlign: "left" }}>
         <label style={{ display: "block", marginBottom: "5px", fontSize: '1.13em', fontWeight: 600, letterSpacing: '0.01em' }}>Courses:</label>
@@ -1733,241 +1625,123 @@ const MakeRoutinePage = () => {
       </div>
       {/* Faculty Selection for Each Course */}
       {routineCourses.map(course => {
-        const isLocked = lockedCourses.has(course.value);
         const facultyOptions = Object.entries(availableFacultyByCourse[course.value] || {})
-          .filter(([_, info]) => isLocked || info.availableSeats > 0)
+          .filter(([_, info]) => info.availableSeats > 0)
           .map(([faculty, info]) => ({ value: faculty, label: faculty, info }));
         const selectedFaculty = selectedFacultyByCourse[course.value] || [];
 
-        // Check if locked course is incomplete
-        const isIncomplete = isLocked && (
-          selectedFaculty.length === 0 || 
-          selectedFaculty.some(faculty => !selectedSectionsByFaculty[course.value]?.[faculty.value])
-        );
-
         return (
-          <div key={course.value} className={`card ${isIncomplete ? 'locked-course-incomplete' : ''}`} style={{ 
-            marginBottom: "10px", 
-            padding: "10px 14px", 
-            fontSize: "0.97em", 
-            display: "flex", 
-            flexDirection: "column", 
-            gap: "8px",
-            position: "relative",
-            backgroundColor: isLocked ? '#fff9f0' : '#fff',
-            border: isLocked ? '1px solid #ffd699' : '1px solid #e0e0e0'
-          }}>
-            {isLocked && selectedFaculty.length > 0 && !selectedSectionsByFaculty[course.value]?.[selectedFaculty[0]?.value] && (
-              <div style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: "rgba(255, 255, 255, 0.8)",
-                zIndex: 5, // Lowered z-index so dropdown can appear above
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexDirection: "column",
-                padding: "20px",
-                textAlign: "center",
-                borderRadius: "4px",
-                pointerEvents: "none"
-              }}>
-                <div style={{ 
-                  color: "#e65100",
-                  fontWeight: "600",
-                  marginBottom: "8px"
-                }}>
-                  ⚠️ Course is Locked
-                </div>
-                <div style={{ 
-                  color: "#666",
-                  fontSize: "0.9em"
-                }}>
-                  Please select a section to continue
-                </div>
-              </div>
-            )}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ fontWeight: 600, fontSize: "1.08em", marginBottom: 2, display: "flex", alignItems: "center" }}>
-                {course.label}
-                {isIncomplete && <span className="locked-course-warning" title="Section selection incomplete">⚠️</span>}
-              </div>
-              <button
-                onClick={() => handleToggleCourseLock(course.value)}
-                className={`lock-btn ${isLocked ? 'locked' : ''}`}
-                title={isLocked ? "Unlock Course" : "Lock Course"}
-                style={{
-                  opacity: 1,
-                  cursor: 'pointer'
-                }}
-              >
-                {isLocked ? "🔒" : "🔓"}
-              </button>
-            </div>
-
+          <div key={course.value} className="card" style={{ marginBottom: "10px", padding: "10px 14px", fontSize: "0.97em", display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div style={{ fontWeight: 600, fontSize: "1.08em", marginBottom: 2 }}>{course.label}</div>
             {/* Faculty selection */}
-            <div style={{ 
-              position: "relative",
-              opacity: 1,
-              pointerEvents: 'auto'
-            }}>
-              <div className="faculty-input-container">
-                {selectedFaculty.map(faculty => (
-                  <span key={faculty.value} className="faculty-tag">
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <label style={{ minWidth: 55, fontSize: "0.95em", color: "#444", marginBottom: 0 }}>Faculty:</label>
+              <div style={{ position: 'relative', minWidth: 180 }}>
+                {/* Display selected faculty tags */}
+                {(selectedFacultyByCourse[course.value] || []).map(faculty => (
+                  <span key={faculty.value} style={{ backgroundColor: '#f0f0f0', color: '#555555', borderRadius: '4px', padding: '2px 8px', marginRight: '5px', marginBottom: '2px', display: 'inline-flex', alignItems: 'center', fontSize: '0.97em' }}>
                     {faculty.label}
                     <button
+                      type="button"
                       onClick={() => handleRemoveFacultyTag(faculty.value, course.value)}
-                      className="faculty-tag-remove"
-                      disabled={isLocked}
+                      style={{ marginLeft: '5px', cursor: 'pointer', background: 'none', border: 'none', color: '#555555', padding: 0 }}
                     >
-                      ×
+                      &times;
                     </button>
                   </span>
                 ))}
+                {/* Faculty input field */}
                 <input
                   type="text"
-                  placeholder={isLocked && selectedFaculty.length > 0 ? "Only one faculty allowed for locked courses" : "Add faculty..."}
+                  placeholder="Select faculty..."
+                  aria-label={`Select faculty for ${course.label}`}
                   value={facultySearchTerm[course.value] || ''}
-                  onChange={(e) => handleFacultyInputChange(e, course.value)}
+                  onChange={e => handleFacultyInputChange(e, course.value)}
                   onFocus={() => handleFacultyInputFocus(course.value)}
                   onBlur={() => handleFacultyInputBlur(course.value)}
-                  className="faculty-input"
-                  disabled={isLocked && selectedFaculty.length > 0}
-                  style={{
-                    backgroundColor: isLocked && selectedFaculty.length > 0 ? '#f5f5f5' : 'transparent',
-                    cursor: isLocked && selectedFaculty.length > 0 ? 'not-allowed' : 'text',
-                    color: isLocked && selectedFaculty.length > 0 ? '#999' : 'inherit'
-                  }}
+                  style={{ flexGrow: 1, border: 'none', outline: 'none', padding: '5px', minWidth: 90 }}
                 />
+                {/* Faculty suggestions list */}
+                {(isFacultySuggestionsOpen[course.value] && filteredFacultyOptions[course.value] && filteredFacultyOptions[course.value].length > 0) && (
+  <ul className="absolute z-50 w-full mt-1 rounded-md border border-black border-2 bg-white shadow-lg max-h-[200px] overflow-y-auto" style={{ textAlign: "left" }} role="listbox" tabIndex={0}>
+    {filteredFacultyOptions[course.value].map(option => (
+      <li
+        key={option.value}
+        onClick={() => handleFacultySuggestionSelect(option, course.value)}
+        className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 border-b border-gray-200 last:border-b-0"
+        role="option"
+        aria-selected={false}
+      >
+        {option.label}
+      </li>
+    ))}
+  </ul>
+)}
               </div>
-              {/* Faculty suggestions dropdown */}
-              {isFacultySuggestionsOpen[course.value] && filteredFacultyOptions[course.value]?.length > 0 && (
-                <div className="faculty-dropdown">
-                  {filteredFacultyOptions[course.value].map(option => (
-                    <div
-                      key={option.value}
-                      onClick={() => handleFacultySuggestionSelect(option, course.value)}
-                      className="faculty-dropdown-item"
-                    >
-                      <div style={{ fontWeight: "500" }}>{option.label}</div>
-                      {option.info && (
-                        <div style={{ fontSize: "0.85em", color: "#666", marginTop: "2px" }}>
-                          {option.info.availableSeats} seats available in {option.info.sections.length} sections
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
-
-            {/* Section selection for each selected faculty */}
-            {selectedFaculty.map(faculty => {
-              const facultyInfo = availableFacultyByCourse[course.value]?.[faculty.value];
-              if (!facultyInfo) return null;
-              const sectionOptions = facultyInfo.sections
-                .filter(section => isLocked || (section.capacity - section.consumedSeat > 0))
-                .map(section => ({
+            {/* Section selection (vertical, below faculty) */}
+              {selectedFaculty.map(faculty => {
+                const facultyInfo = availableFacultyByCourse[course.value]?.[faculty.value];
+                if (!facultyInfo) return null;
+                const sectionOptions = facultyInfo.sections.map(section => ({
                   value: section.sectionName,
                   label: `${section.sectionName} (${section.capacity - section.consumedSeat} seats)`,
-                  section
+                  section: section
                 }));
               const selectedSection = selectedSectionsByFaculty[course.value]?.[faculty.value] || null;
-
-              return (
-                <div key={faculty.value} style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '8px', 
-                  marginTop: 4,
-                  backgroundColor: isLocked && !selectedSection ? '#fff3e0' : 'transparent',
-                  padding: '8px',
-                  borderRadius: '4px',
-                  border: isLocked && !selectedSection ? '1px dashed #ffb74d' : 'none'
-                }}>
-                  <label style={{ 
-                    fontSize: "0.85em", 
-                    color: isLocked && !selectedSection ? "#e65100" : "#666", 
-                    marginBottom: 0, 
-                    minWidth: 60,
-                    fontWeight: isLocked ? '600' : 'normal'
-                  }}>
+                return (
+                <div key={faculty.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: 4 }}>
+                  <label style={{ fontSize: "0.85em", color: "#666", marginBottom: 0, minWidth: 60 }}>
                     {faculty.value} Section:
-                    {isLocked && !selectedSection && " (Required)"}
-                  </label>
+                      </label>
                   {/* Custom section dropdown */}
-                  <div style={{ position: "relative", flex: 1, zIndex: 10 }}> {/* Added zIndex */}
-                    <input
-                      type="text"
-                      placeholder={isLocked ? "Section selection required..." : "Select section..."}
-                      value={selectedSection ? selectedSection.label : (sectionSearchTerm[course.value]?.[faculty.value] || '')}
-                      onChange={(e) => handleSectionInputChange(e, course.value, faculty.value, sectionOptions)}
-                      onFocus={() => handleSectionInputFocus(course.value, faculty.value, sectionOptions)}
-                      onBlur={() => handleSectionInputBlur(course.value, faculty.value)}
-                      style={{
-                        width: "100%",
-                        padding: "6px 12px",
-                        border: isLocked && !selectedSection ? "2px solid #ffb74d" : "1px solid #ddd",
-                        borderRadius: "4px",
-                        fontSize: "0.9em",
-                        backgroundColor: "#fff",
-                        transition: "all 0.2s ease",
-                        outline: "none",
-                        position: "relative",
-                        zIndex: 10
-                      }}
-                    />
-                    {/* Section suggestions dropdown */}
-                    {isSectionSuggestionsOpen[course.value]?.[faculty.value] && (
-                      <div style={{
-                        position: "absolute",
-                        top: "100%",
-                        left: 0,
-                        right: 0,
-                        backgroundColor: "#fff",
-                        border: "1px solid #ddd",
-                        borderRadius: "4px",
-                        marginTop: "4px",
-                        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                        zIndex: 1000,
-                        maxHeight: "200px",
-                        overflowY: "auto"
-                      }}>
-                        {sectionOptions.map(option => (
-                          <div
-                            key={option.value}
-                            onClick={() => handleSectionSuggestionSelect(option, course.value, faculty.value)}
-                            style={{
-                              padding: "8px 12px",
-                              cursor: "pointer",
-                              borderBottom: "1px solid #eee",
-                              transition: "background-color 0.2s",
-                              fontSize: "0.9em",
-                              color: "#333",
-                              backgroundColor: "#fff",
-                              ':hover': {
-                                backgroundColor: "#f5f5f5"
-                              }
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = "#f5f5f5";
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = "#fff";
-                            }}
-                          >
-                            {option.label}
-                          </div>
-                        ))}
-                      </div>
+                  <div style={{ position: 'relative', minWidth: 120 }}>
+                    {/* Tag for selected section */}
+                    {selectedSection && (
+                      <span style={{ backgroundColor: '#f0f0f0', color: '#555555', borderRadius: '4px', padding: '2px 8px', marginRight: '5px', marginBottom: '2px', display: 'inline-flex', alignItems: 'center', fontSize: '0.97em' }}>
+                        {selectedSection.label}
+                        <button
+                          type="button"
+                          onClick={() => handleSectionSuggestionSelect(null, course.value, faculty.value)}
+                          style={{ marginLeft: '5px', cursor: 'pointer', background: 'none', border: 'none', color: '#555555', padding: 0 }}
+                        >
+                          &times;
+                        </button>
+                      </span>
                     )}
+                    {/* Section input field: only show if not selected */}
+                    {!selectedSection && (
+                      <input
+                        type="text"
+                        placeholder="Section..."
+                        aria-label={`Select section for ${faculty.value} in ${course.label}`}
+                        value={sectionSearchTerm[course.value]?.[faculty.value] || ''}
+                        onChange={e => handleSectionInputChange(e, course.value, faculty.value, sectionOptions)}
+                        onFocus={() => handleSectionInputFocus(course.value, faculty.value, sectionOptions)}
+                        onBlur={() => handleSectionInputBlur(course.value, faculty.value)}
+                        style={{ width: '100%', border: '1px solid #ccc', borderRadius: '4px', padding: '5px', minWidth: 60 }}
+                      />
+                    )}
+                    {/* Section suggestions list */}
+                    {(isSectionSuggestionsOpen[course.value]?.[faculty.value] && filteredSectionOptions[course.value]?.[faculty.value]?.length > 0) && (
+  <ul className="absolute z-50 w-full mt-1 rounded-md border border-black border-2 bg-white shadow-lg max-h-[200px] overflow-y-auto" style={{ textAlign: "left" }} role="listbox" tabIndex={0}>
+    {filteredSectionOptions[course.value][faculty.value].map(option => (
+      <li
+        key={option.value}
+        onClick={() => handleSectionSuggestionSelect(option, course.value, faculty.value)}
+        className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-100 border-b border-gray-200 last:border-b-0"
+        role="option"
+        aria-selected={false}
+      >
+        {option.label}
+      </li>
+    ))}
+  </ul>
+)}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
           </div>
         );
       })}

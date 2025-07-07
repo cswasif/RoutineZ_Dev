@@ -29,7 +29,7 @@ debugprint("\n=== Loading Environment Variables ===")
 debugprint("Available environment variables:", list(os.environ.keys()))
 
 # Hardcoded Google API key
-GOOGLE_API_KEY = "AIzaSyC9fjJ5afylqK_RzxAWUwI1Y9yN06BJCI0"
+GOOGLE_API_KEY = "AIzaSyC0G1uNsSKLgrGh7koSpgx4-sySYHyGoM0"
 debugprint("Using hardcoded GOOGLE_API_KEY")
 debugprint("✓ GOOGLE_API_KEY is set and has a value")
 
